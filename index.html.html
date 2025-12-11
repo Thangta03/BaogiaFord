@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Báo Giá Xe Ford (Mobile)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary-bg: #102b4e; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; padding-bottom: 40px; }
+        .theme-bg { background-color: var(--primary-bg); }
+        .invoice-box { background: white; border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
+        /* iOS Input Fix */
+        select, input { font-size: 16px !important; } 
+        /* Editable highlight */
+        [contenteditable="true"]:focus {
+            background-color: #eef2ff;
+            outline: none;
+            border-bottom: 1px dashed #102b4e;
+            padding: 2px;
+        }
+        @media print {
+            body { background-color: white; }
+            .no-print { display: none !important; }
+            #quoteResult { border: none; box-shadow: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="theme-bg text-white py-3 shadow-md no-print sticky top-0 z-50">
+        <div class="px-4 flex justify-between items-center">
+            <div class="font-bold">BÁO GIÁ FORD</div>
+            <div class="flex gap-2">
+                <button onclick="handleSaveImage()" class="bg-white/20 px-3 py-1 rounded text-sm font-semibold">Lưu Ảnh</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="p-4 max-w-lg mx-auto">
+        
+        <!-- Input Panel -->
+        <div class="bg-white rounded-lg shadow-sm mb-4 border border-gray-200 no-print">
+            <div class="p-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center" onclick="document.getElementById('mobileInput').classList.toggle('hidden')">
+                <span class="font-bold text-gray-700 uppercase text-xs">Nhập thông tin xe</span>
+                <span class="text-gray-400">▼</span>
+            </div>
+            <div id="mobileInput" class="p-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Ảnh xe</label>
+                    <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload()" class="block w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700"/>
+                    <div id="fileNameDisplay" class="text-[10px] text-gray-500 mt-2 truncate hidden"></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Chọn xe</label>
+                    <select id="carSelect" onchange="updateDefaultDiscount()" class="w-full border p-2 rounded bg-gray-50 h-10"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Giảm giá</label>
+                    <input type="number" id="discountInput" placeholder="0" class="w-full border p-2 rounded h-10">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Khu vực</label>
+                    <select id="provinceSelect" class="w-full border p-2 rounded bg-gray-50 h-10"></select>
+                </div>
+
+                <button onclick="calculateQuote()" class="w-full theme-bg text-white font-bold py-3 rounded shadow">TÍNH GIÁ NGAY</button>
+            </div>
+        </div>
+
+        <!-- Result Card -->
+        <div id="quoteResult" class="invoice-box hidden bg-white shadow-lg relative">
+            <!-- Image -->
+            <div id="carImageContainer" class="hidden w-full h-48 bg-gray-100 relative overflow-hidden">
+                <img id="displayImage" src="" class="w-full h-full object-cover">
+                <!-- Delete button removed -->
+            </div>
+
+            <!-- Content -->
+            <div class="p-4">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <span id="displayCarType" class="text-[10px] font-bold bg-gray-100 px-2 py-1 rounded uppercase">--</span>
+                        <h2 id="displayCarName" class="text-lg font-bold text-[#102b4e] mt-1">Car Name</h2>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-400 uppercase">Giá niêm yết</p>
+                        <!-- Editable List Price -->
+                        <p id="displayListPrice" class="text-base font-bold" contenteditable="true" onfocus="handleFocus(this)" onblur="handleInputBlur(this)">0 ₫</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between bg-yellow-50 p-3 rounded mb-4 border border-yellow-100">
+                    <span class="text-xs font-bold text-gray-700">Chính Sách Bán Hàng</span>
+                    <!-- Editable Discount -->
+                    <span id="displayDiscount" class="text-sm font-bold text-red-600" contenteditable="true" onfocus="handleFocus(this)" onblur="handleInputBlur(this)">- 0 ₫</span>
+                </div>
+
+                <table class="w-full text-sm mb-4" id="costTable">
+                    <tbody class="divide-y divide-gray-100">
+                         <!-- Javascript will populate rows here -->
+                    </tbody>
+                    <!-- Footer with + Button -->
+                    <tfoot>
+                        <tr class="no-print hide-on-shot">
+                            <td colspan="2" class="py-2 text-center">
+                                <button onclick="addEmptyRow()" class="text-gray-400 hover:text-blue-600 font-bold text-lg leading-none w-full py-1 border border-dashed border-gray-300 rounded hover:border-blue-300 transition" title="Thêm dòng chi phí">+</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="border-t pt-4">
+                     <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-500">Giá xe (đã trừ KM)</span>
+                        <span id="displayNetPrice" class="font-bold">0 ₫</span>
+                    </div>
+                     <div class="flex justify-between text-sm mb-4">
+                        <span class="text-gray-500">Tổng chi phí</span>
+                        <span id="displayTotalFees" class="font-bold">0 ₫</span>
+                    </div>
+                    <div class="bg-[#102b4e] text-white p-4 rounded-lg flex justify-between items-center shadow-lg">
+                        <div>
+                            <p class="text-xs opacity-80 uppercase">Lăn Bánh</p>
+                            <p class="text-[10px] opacity-60">Đã gồm VAT</p>
+                        </div>
+                        <span id="displayFinalTotal" class="text-xl font-bold">0 ₫</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cars = [
+            { id: 't_trend', name: 'Ford Territory Trend', price: 762000000, discount: 40000000, type: 'car', label: '5 Chỗ' },
+            { id: 't_titanium', name: 'Ford Territory Titanium', price: 840000000, discount: 40000000, type: 'car', label: '5 Chỗ' },
+            { id: 't_titanium_x', name: 'Ford Territory Titanium X', price: 896000000, discount: 40000000, type: 'car', label: '5 Chỗ' },
+            { id: 'r_xl', name: 'Ford Ranger XL 4x4', price: 669000000, discount: 35000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'r_xls_42', name: 'Ford Ranger XLS 4x2', price: 707000000, discount: 45000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'r_xls_44', name: 'Ford Ranger XLS 4x4', price: 776000000, discount: 45000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'r_sport', name: 'Ford Ranger Sport', price: 864000000, discount: 55000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'r_wildtrak', name: 'Ford Ranger Wildtrak', price: 979000000, discount: 123000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'r_stormtrak', name: 'Ford Ranger Stormtrak', price: 1039000000, discount: 70000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'r_raptor', name: 'Ford Ranger Raptor', price: 1299000000, discount: 120000000, type: 'pickup', label: 'Bán Tải' },
+            { id: 'e_ambient', name: 'Ford Everest Ambient', price: 1099000000, discount: 63000000, type: 'car', label: '7 Chỗ' },
+            { id: 'e_sport', name: 'Ford Everest Sport', price: 1178000000, discount: 65000000, type: 'car', label: '7 Chỗ' },
+            { id: 'e_titanium_42', name: 'Ford Everest 4x2 Titanium', price: 1299000000, discount: 70000000, type: 'car', label: '7 Chỗ' },
+            { id: 'e_titanium_44', name: 'Ford Everest 4x4 Titanium', price: 1468000000, discount: 110000000, type: 'car', label: '7 Chỗ' },
+            { id: 'e_platinum', name: 'Ford Everest Platinum', price: 1545000000, discount: 30000000, type: 'car', label: '7 Chỗ' },
+            { id: 'tr_trend', name: 'Ford Transit Trend', price: 907000000, discount: 67000000, type: 'bus', label: '16 Chỗ' }
+        ];
+
+        const provinces = [
+            { id: 'hn', name: 'Hà Nội', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 20000000, pickupPlate: 500000 },
+            { id: 'hp', name: 'Hải Phòng', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'qn', name: 'Quảng Ninh', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'ct', name: 'Cần Thơ', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 20000000, pickupPlate: 150000 },
+            { id: 'ls', name: 'Lạng Sơn', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'lc', name: 'Lào Cai', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'cb', name: 'Cao Bằng', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'sl', name: 'Sơn La', carTax: 0.12, pickupTax: 0.072, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'ht', name: 'Hà Tĩnh', carTax: 0.11, pickupTax: 0.066, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 },
+            { id: 'other', name: 'Tỉnh Khác (10%)', carTax: 0.10, pickupTax: 0.06, busTax: 0.02, carPlate: 1000000, pickupPlate: 150000 }
+        ];
+        const fees = { registry: 100000, road: 1560000, service: 2500000, chassis: 400000, mica: 400000, insuranceCar: 480000, insuranceSUV: 870000, insurancePickup: 480000 };
+
+        const vn = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
+        function fmt(n) { return vn.format(n); }
+        function parse(s) { 
+            let val = Number(s.replace(/[^0-9]/g, '')); 
+            return isNaN(val) ? 0 : val;
+        }
+
+        const cSel = document.getElementById('carSelect');
+        const pSel = document.getElementById('provinceSelect');
+        cars.forEach(c => { let o = document.createElement('option'); o.value=c.id; o.text=c.name; cSel.add(o); });
+        provinces.forEach(p => { let o = document.createElement('option'); o.value=p.id; o.text=p.name; pSel.add(o); });
+
+        function updateDefaultDiscount() {
+            const car = cars.find(c => c.id === cSel.value);
+            if(car) document.getElementById('discountInput').value = car.discount;
+        }
+
+        function createRow(index, name, value, extra = '', isBold = false) {
+            // Logic to bold the text if isBold is true
+            const textClass = isBold ? 'font-bold text-gray-800' : 'text-gray-600';
+            
+            return `<tr>
+                <td class="py-2 ${textClass} outline-none" contenteditable="true">${index}. ${name} ${extra}</td>
+                <td class="py-2 text-right font-medium outline-none cost-value" contenteditable="true" onfocus="handleFocus(this)" onblur="handleInputBlur(this)">${fmt(value)}</td>
+            </tr>`;
+        }
+
+        function calculateQuote() {
+            const car = cars.find(c => c.id === cSel.value);
+            const prov = provinces.find(p => p.id === pSel.value);
+            const disc = Number(document.getElementById('discountInput').value);
+            if(!car || !prov) return;
+
+            let taxRate = (car.type === 'pickup') ? prov.pickupTax : (car.type === 'bus' ? prov.busTax : prov.carTax);
+            let plate = (car.type === 'pickup') ? prov.pickupPlate : (car.type === 'bus' ? 500000 : prov.carPlate);
+            let ins = car.name.includes("Everest") ? fees.insuranceSUV : (car.type === 'pickup' ? fees.insurancePickup : fees.insuranceCar);
+            let road = (car.name.includes("Ranger") || car.name.includes("Everest")) ? 2160000 : fees.road;
+            let tax = car.price * taxRate;
+            
+            const tbody = document.querySelector('#costTable tbody');
+            tbody.innerHTML = ''; 
+
+            // Passed 'true' as the last argument to make this row BOLD
+            tbody.innerHTML += createRow(1, 'Thuế trước bạ', tax, `<span class="text-[10px] bg-gray-100 p-0.5 rounded text-gray-500 font-normal no-edit" contenteditable="false">${(taxRate*100).toFixed(1)}%</span>`, true);
+            tbody.innerHTML += createRow(2, 'Tiền biển số', plate);
+            tbody.innerHTML += createRow(3, 'Đăng kiểm', fees.registry);
+            tbody.innerHTML += createRow(4, 'Phí đường bộ', road);
+            tbody.innerHTML += createRow(5, 'Bảo hiểm TNDS', ins);
+            tbody.innerHTML += createRow(6, 'Cà số khung/máy', fees.chassis);
+            tbody.innerHTML += createRow(7, 'Ép biển mica', fees.mica);
+            tbody.innerHTML += createRow(8, 'Dịch vụ đăng ký', fees.service);
+
+            document.getElementById('quoteResult').classList.remove('hidden');
+            document.getElementById('mobileInput').classList.add('hidden');
+            
+            document.getElementById('displayCarType').innerText = car.label;
+            document.getElementById('displayCarName').innerText = car.name;
+            document.getElementById('displayListPrice').innerText = fmt(car.price);
+            document.getElementById('displayDiscount').innerText = "- " + fmt(disc);
+            
+            updateCalculationsFromDOM(); 
+        }
+
+        function addEmptyRow() {
+            const tbody = document.querySelector('#costTable tbody');
+            const rowCount = tbody.rows.length + 1;
+            
+            const newRow = tbody.insertRow();
+            newRow.innerHTML = `<td class="py-2 text-gray-600 outline-none" contenteditable="true">${rowCount}. Chi phí khác</td>
+                                <td class="py-2 text-right font-medium outline-none cost-value" contenteditable="true" onfocus="handleFocus(this)" onblur="handleInputBlur(this)">0 ₫</td>`;
+            newRow.cells[0].focus();
+        }
+
+        function handleFocus(el) {
+            let val = parse(el.innerText);
+            el.innerText = val; 
+        }
+
+        function handleInputBlur(el) {
+            let val = parse(el.innerText);
+            if(el.id === 'displayDiscount') {
+                el.innerText = "- " + fmt(val);
+            } else {
+                el.innerText = fmt(val);
+            }
+            updateCalculationsFromDOM();
+        }
+
+        function updateCalculationsFromDOM() {
+            let listPrice = parse(document.getElementById('displayListPrice').innerText);
+            let discount = parse(document.getElementById('displayDiscount').innerText);
+            let totalFees = 0;
+            const costCells = document.querySelectorAll('.cost-value');
+            costCells.forEach(td => { totalFees += parse(td.innerText); });
+
+            document.getElementById('displayNetPrice').innerText = fmt(listPrice - discount);
+            document.getElementById('displayTotalFees').innerText = fmt(totalFees);
+            document.getElementById('displayFinalTotal').innerText = fmt((listPrice - discount) + totalFees);
+        }
+
+        function handleImageUpload() {
+            const f = document.getElementById('imageInput').files[0];
+            if(f) {
+                const r = new FileReader();
+                r.onload = e => { 
+                    document.getElementById('displayImage').src = e.target.result;
+                    document.getElementById('carImageContainer').classList.remove('hidden');
+                    const nameDisp = document.getElementById('fileNameDisplay');
+                    nameDisp.innerText = f.name;
+                    nameDisp.classList.remove('hidden');
+                };
+                r.readAsDataURL(f);
+            }
+        }
+        
+        function handleSaveImage() {
+            const element = document.getElementById('quoteResult');
+            if (element.classList.contains('hidden')) { alert('Vui lòng tính giá trước.'); return; }
+            
+            const ignoredElements = document.querySelectorAll('.hide-on-shot');
+            ignoredElements.forEach(el => el.classList.add('hidden'));
+
+            window.scrollTo(0,0);
+            
+            html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'BaoGiaXe_' + Date.now() + '.jpg';
+                link.href = canvas.toDataURL('image/jpeg');
+                link.click();
+
+                ignoredElements.forEach(el => el.classList.remove('hidden'));
+            }).catch(err => {
+                ignoredElements.forEach(el => el.classList.remove('hidden'));
+                console.error(err);
+            });
+        }
+    </script>
+</body>
+</html>

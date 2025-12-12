@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Báo Giá Xe Ford (Formal Fix)</title>
+    <title>Báo Giá Xe Ford (IOS Fix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -30,7 +30,7 @@
             display: inline-block;
             white-space: nowrap;
             vertical-align: middle;
-            font-weight: normal; /* Ensure badge isn't bold even if row is */
+            font-weight: normal; 
         }
 
         /* Editable highlight */
@@ -91,9 +91,9 @@
 
         <!-- Result Card (Formal Style) -->
         <div id="quoteResult" class="invoice-box hidden bg-white shadow-xl relative pb-2">
-            <!-- Optional Car Image -->
-            <div id="carImageContainer" class="hidden w-full h-56 bg-gray-100 relative overflow-hidden border-b">
-                <img id="displayImage" src="" class="w-full h-full object-cover">
+            <!-- IOS FIX: Using Background Image Div instead of IMG tag -->
+            <div id="carImageContainer" class="hidden w-full h-56 bg-gray-100 relative border-b">
+                <div id="displayImageDiv" class="w-full h-full bg-center bg-cover bg-no-repeat"></div>
             </div>
 
             <!-- Content Container -->
@@ -105,7 +105,6 @@
                         <span id="displayCarType" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">--</span>
                         <h2 id="displayCarName" class="text-xl font-bold text-[#102b4e] leading-tight">Car Name</h2>
                     </div>
-                    <!-- Added whitespace-nowrap to prevent price break -->
                     <div class="text-right whitespace-nowrap">
                         <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Giá niêm yết</p>
                         <p id="displayListPrice" class="text-lg font-bold text-gray-800" contenteditable="true" onfocus="handleFocus(this)" onblur="handleInputBlur(this)">0 ₫</p>
@@ -167,7 +166,6 @@
 
     <script>
         const cars = [
-            // Fixed Labels to "5 Chỗ"
             { id: 't_trend', name: 'Ford Territory Trend', price: 762000000, discount: 40000000, type: 'car', label: '5 Chỗ' },
             { id: 't_titanium', name: 'Ford Territory Titanium', price: 840000000, discount: 40000000, type: 'car', label: '5 Chỗ' },
             { id: 't_titanium_x', name: 'Ford Territory Titanium X', price: 896000000, discount: 40000000, type: 'car', label: '5 Chỗ' },
@@ -180,6 +178,8 @@
             { id: 'r_raptor', name: 'Ford Ranger Raptor', price: 1299000000, discount: 120000000, type: 'pickup', label: 'Bán Tải' },
             { id: 'e_ambient', name: 'Ford Everest Ambient', price: 1099000000, discount: 63000000, type: 'car', label: '7 Chỗ' },
             { id: 'e_sport', name: 'Ford Everest Sport', price: 1178000000, discount: 65000000, type: 'car', label: '7 Chỗ' },
+            // NEW CAR ADDED HERE
+            { id: 'e_sport_se', name: 'Ford Everest Sport SE', price: 1199000000, discount: 55000000, type: 'car', label: '7 Chỗ' },
             { id: 'e_titanium_42', name: 'Ford Everest 4x2 Titanium', price: 1299000000, discount: 70000000, type: 'car', label: '7 Chỗ' },
             { id: 'e_titanium_44', name: 'Ford Everest 4x4 Titanium', price: 1468000000, discount: 110000000, type: 'car', label: '7 Chỗ' },
             { id: 'e_platinum', name: 'Ford Everest Platinum', price: 1545000000, discount: 30000000, type: 'car', label: '7 Chỗ' },
@@ -215,7 +215,6 @@
         }
 
         function createRow(index, name, value, extra = '') {
-            // Fix: Check if it is the first row (index 1) to make it bold
             const isBold = index === 1;
             const boldClass = isBold ? 'font-bold text-gray-800' : '';
 
@@ -245,7 +244,6 @@
             const tbody = document.querySelector('#costTable tbody');
             tbody.innerHTML = ''; 
 
-            // Added tax badge wrapper
             tbody.innerHTML += createRow(1, 'Thuế trước bạ', tax, `<span class="tax-badge" contenteditable="false">${(taxRate*100).toFixed(1)}%</span>`);
             tbody.innerHTML += createRow(2, 'Tiền biển số', plate);
             tbody.innerHTML += createRow(3, 'Phí đăng kiểm', fees.registry);
@@ -312,7 +310,8 @@
             if(f) {
                 const r = new FileReader();
                 r.onload = e => { 
-                    document.getElementById('displayImage').src = e.target.result;
+                    // IOS Fix: Use background-image instead of src
+                    document.getElementById('displayImageDiv').style.backgroundImage = `url(${e.target.result})`;
                     document.getElementById('carImageContainer').classList.remove('hidden');
                     const nameDisp = document.getElementById('fileNameDisplay');
                     nameDisp.innerText = f.name;
@@ -329,19 +328,31 @@
             const ignoredElements = document.querySelectorAll('.hide-on-shot');
             ignoredElements.forEach(el => el.classList.add('hidden'));
 
+            // IOS Fix 1: Force scroll to top
             window.scrollTo(0,0);
             
-            html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff" }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'BaoGiaFord_' + Date.now() + '.jpg';
-                link.href = canvas.toDataURL('image/jpeg');
-                link.click();
+            // IOS Fix 2: Small delay to ensure rendering matches scroll
+            setTimeout(() => {
+                html2canvas(element, { 
+                    scale: 2, 
+                    useCORS: true, 
+                    allowTaint: true, 
+                    backgroundColor: "#ffffff",
+                    scrollY: 0,
+                    scrollX: 0
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'BaoGiaFord_' + Date.now() + '.jpg';
+                    link.href = canvas.toDataURL('image/jpeg');
+                    link.click();
 
-                ignoredElements.forEach(el => el.classList.remove('hidden'));
-            }).catch(err => {
-                ignoredElements.forEach(el => el.classList.remove('hidden'));
-                console.error(err);
-            });
+                    ignoredElements.forEach(el => el.classList.remove('hidden'));
+                }).catch(err => {
+                    ignoredElements.forEach(el => el.classList.remove('hidden'));
+                    console.error(err);
+                    alert("Lỗi khi lưu ảnh. Vui lòng thử lại.");
+                });
+            }, 150);
         }
     </script>
 </body>
